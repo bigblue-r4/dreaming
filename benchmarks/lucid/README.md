@@ -1,0 +1,1 @@
+Six seeded categories are in fixtures/seeded-errors. Paired scripted responses isolate orchestration correctness. Scripted outcomes do not measure real model diagnosis. Replace scripts with explicitly configured model endpoints and repeat trials before research claims.

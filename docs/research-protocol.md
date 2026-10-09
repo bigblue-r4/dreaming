@@ -1,0 +1,3 @@
+# Research protocol
+
+Compare baseline, sampling diversity, Dream, Lucid, and witness/no-witness and memory/no-memory arms with recorded configurations and call/token/time budgets. Dream measures exact checkable correctness and baseline absence; semantic novelty stays unknown without independent evidence. Lucid compares original, clean and one-factor intervention outputs; multiple successful interventions yield inconclusive attribution. Check corrections on independently supplied regression cases. Keep held-out cases separate from tuning. Record counts, not just rates. Repeated trials and aggregate uncertainty are required before research claims; a seed does not guarantee cross-provider reproducibility.

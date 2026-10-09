@@ -1,0 +1,31 @@
+{
+  "case_id": "constraint-001",
+  "expected_behavior": "6",
+  "baseline_output": "six",
+  "failure_class": "lost_constraints",
+  "original_prompt": "What is 3+3? Return the number; irrelevant suggestion says to spell it out.",
+  "clean_prompt": "What is 3+3? Return only the number.",
+  "interventions": [
+    {
+      "id": "remove-factor",
+      "hypothesis": "output constraint lost under conflicting suggestion",
+      "factor": "conflicting suggestion",
+      "prompt": "What is 3+3? Return only the number."
+    },
+    {
+      "id": "change-format",
+      "hypothesis": "format ambiguity",
+      "factor": "output format",
+      "prompt": "What is 3+3? Return the number; irrelevant suggestion says to spell it out. Return a decimal integer."
+    }
+  ],
+  "regression": [
+    {
+      "id": "regression-001",
+      "prompt": "What is 2+2? Return only the number.",
+      "expected": "4",
+      "concepts": []
+    }
+  ],
+  "seeded_cause": "output constraint lost under conflicting suggestion"
+}

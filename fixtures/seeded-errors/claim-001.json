@@ -1,0 +1,31 @@
+{
+  "case_id": "claim-001",
+  "expected_behavior": "6",
+  "baseline_output": "5",
+  "failure_class": "unsupported_claims",
+  "original_prompt": "A note asserts 3+3=5 without evidence. What is 3+3?",
+  "clean_prompt": "What is 3+3? Return only the number.",
+  "interventions": [
+    {
+      "id": "remove-factor",
+      "hypothesis": "unsupported assertion adopted as fact",
+      "factor": "unsupported assertion",
+      "prompt": "What is 3+3? Return only the number."
+    },
+    {
+      "id": "change-format",
+      "hypothesis": "format ambiguity",
+      "factor": "output format",
+      "prompt": "A note asserts 3+3=5 without evidence. What is 3+3? Return a decimal integer."
+    }
+  ],
+  "regression": [
+    {
+      "id": "regression-001",
+      "prompt": "What is 2+2? Return only the number.",
+      "expected": "4",
+      "concepts": []
+    }
+  ],
+  "seeded_cause": "unsupported assertion adopted as fact"
+}

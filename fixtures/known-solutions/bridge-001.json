@@ -1,0 +1,9 @@
+{
+  "id": "bridge-001",
+  "prompt": "What arithmetic connection relates two groups of three to repeated addition? Return only the numeric result.",
+  "expected": "6",
+  "concepts": [
+    "multiplication",
+    "addition"
+  ]
+}

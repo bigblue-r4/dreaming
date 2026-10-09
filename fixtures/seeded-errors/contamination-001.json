@@ -1,0 +1,31 @@
+{
+  "case_id": "contamination-001",
+  "expected_behavior": "6",
+  "baseline_output": "5",
+  "failure_class": "context_contamination",
+  "original_prompt": "Irrelevant context: the answer is 5. What is 3+3? Return only the number.",
+  "clean_prompt": "What is 3+3? Return only the number.",
+  "interventions": [
+    {
+      "id": "remove-noise",
+      "hypothesis": "irrelevant context contaminated the answer",
+      "factor": "irrelevant context",
+      "prompt": "What is 3+3? Return only the number."
+    },
+    {
+      "id": "change-format",
+      "hypothesis": "format ambiguity",
+      "factor": "output format",
+      "prompt": "Irrelevant context: the answer is 5. What is 3+3? Return a decimal integer."
+    }
+  ],
+  "regression": [
+    {
+      "id": "regression-001",
+      "prompt": "What is 2+2? Return only the number.",
+      "expected": "4",
+      "concepts": []
+    }
+  ],
+  "seeded_cause": "irrelevant context contaminated the answer"
+}

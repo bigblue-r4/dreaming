@@ -1,0 +1,8 @@
+model = "local-model"
+temperature = 0.2
+max_calls = 12
+max_tokens = 512
+timeout_ms = 30000
+run_timeout_ms = 120000
+witness = true
+memory = false

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "answer",
+    "connection",
+    "rationale",
+    "source_concepts",
+    "evidence",
+    "counterevidence",
+    "discriminating_test",
+    "uncertainty"
+  ],
+  "properties": {
+    "answer": {
+      "type": "string"
+    },
+    "connection": {
+      "type": "string"
+    },
+    "rationale": {
+      "type": "string"
+    },
+    "source_concepts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "counterevidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "discriminating_test": {
+      "type": "string"
+    },
+    "uncertainty": {
+      "type": "string"
+    }
+  }
+}

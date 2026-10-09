@@ -1,0 +1,1 @@
+Use bridge-001 as a smoke fixture only. Run baseline, diversity, Dream, witness disabled/enabled, and memory disabled/enabled with recorded costs. This is a known-answer software fixture, not evidence of semantic novelty. Supply held-out domain tasks for substantive evaluation.

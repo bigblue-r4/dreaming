@@ -1,0 +1,31 @@
+{
+  "case_id": "tool-001",
+  "expected_behavior": "6",
+  "baseline_output": "5",
+  "failure_class": "tool_use_errors",
+  "original_prompt": "A mocked calculator returned 5 for 3+3. Verify it and return the result.",
+  "clean_prompt": "What is 3+3? Return only the number.",
+  "interventions": [
+    {
+      "id": "remove-factor",
+      "hypothesis": "unverified tool result was accepted",
+      "factor": "tool result",
+      "prompt": "What is 3+3? Return only the number."
+    },
+    {
+      "id": "change-format",
+      "hypothesis": "format ambiguity",
+      "factor": "output format",
+      "prompt": "A mocked calculator returned 5 for 3+3. Verify it and return the result. Return a decimal integer."
+    }
+  ],
+  "regression": [
+    {
+      "id": "regression-001",
+      "prompt": "What is 2+2? Return only the number.",
+      "expected": "4",
+      "concepts": []
+    }
+  ],
+  "seeded_cause": "unverified tool result was accepted"
+}

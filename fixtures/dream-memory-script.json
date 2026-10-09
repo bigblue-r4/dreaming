@@ -1,0 +1,8 @@
+[
+  "5",
+  "{\"answer\": \"6\", \"connection\": \"Multiplication is repeated addition.\", \"rationale\": \"Two groups of three can be computed as 3+3.\", \"source_concepts\": [\"multiplication\", \"addition\"], \"evidence\": [], \"counterevidence\": [\"Generalization to other tasks is untested.\"], \"discriminating_test\": \"Independently calculate 3+3.\", \"uncertainty\": \"This is a seeded demonstration, not a novel scientific result.\"}",
+  "{\"answer\": \"6\", \"connection\": \"Pairing two collections adds cardinalities.\", \"rationale\": \"Two groups of three can be computed as 3+3.\", \"source_concepts\": [\"multiplication\", \"addition\"], \"evidence\": [], \"counterevidence\": [\"Generalization to other tasks is untested.\"], \"discriminating_test\": \"Independently calculate 3+3.\", \"uncertainty\": \"This is a seeded demonstration, not a novel scientific result.\"}",
+  "{\"answer\": \"6\", \"connection\": \"Validated prior addition knowledge supports repeated addition.\", \"rationale\": \"Two groups of three can be computed as 3+3.\", \"source_concepts\": [\"multiplication\", \"addition\"], \"evidence\": [], \"counterevidence\": [\"Generalization to other tasks is untested.\"], \"discriminating_test\": \"Independently calculate 3+3.\", \"uncertainty\": \"This is a seeded demonstration, not a novel scientific result.\"}",
+  "6",
+  "Memory-based hypothesis still requires independent validation."
+]
