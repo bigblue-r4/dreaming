@@ -75,7 +75,14 @@ impl Store {
             safe.diagnosis = Some("run record refused by privacy screen; details redacted".into());
             safe.config = crate::types::Config::default();
             safe.config_fingerprint = crate::engine::fingerprint(&safe.config);
-            self.record(&safe, "redacted")?;
+            // All free-form fields are replaced above; persist once without re-entering screening.
+            let safe_payload = serde_json::to_string(&safe).map_err(|e| e.to_string())?;
+            self.connection
+                .execute(
+                    "INSERT INTO runs VALUES(?1,?2,?3,?4)",
+                    params![safe.id, safe.status, "redacted", safe_payload],
+                )
+                .map_err(|e| e.to_string())?;
             return Err("unsafe payload replaced by redacted failed run record".into());
         }
         crate::privacy::screen(provider)?;

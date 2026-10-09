@@ -200,8 +200,8 @@ impl Engine<'_> {
         run.metrics.witness_calls = session.witness_calls;
         run.metrics.inference_calls = session.calls - session.witness_calls;
         run.metrics.elapsed_ms = session.start.elapsed().as_millis() as u64;
+        run.configuration_unchanged = fingerprint(&session.config) == run.config_fingerprint;
         drop(session);
-        run.configuration_unchanged = fingerprint(&self.config) == run.config_fingerprint;
         run.status = if result.is_ok() {
             "completed"
         } else if cancel.is_cancelled() {

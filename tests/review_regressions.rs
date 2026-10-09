@@ -467,3 +467,60 @@ async fn configuration_preservation_is_not_an_admission_gate() {
     )
     .unwrap();
 }
+
+#[tokio::test]
+async fn configuration_flag_reflects_actual_diversity_session_override() {
+    for temperature in [0.2, 1.0] {
+        let mut db = Store::open(":memory:").unwrap();
+        let p = ScriptedProvider::new(vec!["6".into(); 4]);
+        let engine = Engine {
+            provider: &p,
+            config: Config {
+                temperature,
+                ..cfg()
+            },
+        };
+        let initial = engine.config.clone();
+        let run = engine
+            .run(
+                Mode::Diversity,
+                Some(&task("diversity")),
+                None,
+                &mut db,
+                Cancellation::default(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(run.status, "completed");
+        assert_eq!(run.configuration_unchanged, temperature == 1.0);
+        assert_eq!(engine.config, initial);
+        assert_eq!(run.observations[0].config.temperature, temperature);
+        assert!(run
+            .observations
+            .iter()
+            .skip(1)
+            .all(|o| o.config.temperature == 1.0));
+    }
+}
+
+#[tokio::test]
+async fn redaction_handles_all_free_form_fields_in_one_failed_record() {
+    use sha2::{Digest, Sha256};
+    let mut db = Store::open(":memory:").unwrap();
+    let mut run = dream(&mut db, "redaction-source", "6").await;
+    let marker = "password=fixture-only";
+    run.id = marker.into();
+    run.causal_confidence = marker.into();
+    run.config.model = marker.into();
+    run.config_fingerprint = marker.into();
+    run.subject_id = marker.into();
+    run.provider = marker.into();
+    run.diagnosis = Some(marker.into());
+    assert!(db.record(&run, marker).is_err());
+    let id = format!("redacted-{:x}", Sha256::digest(marker.as_bytes()));
+    let stored = db.run(&id).unwrap();
+    assert_eq!(stored.status, "failed");
+    assert_eq!(stored.metrics.calls, run.metrics.calls);
+    assert!(!serde_json::to_string(&stored).unwrap().contains(marker));
+    assert!(stored.candidates.is_empty());
+}
