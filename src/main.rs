@@ -66,6 +66,8 @@ enum MemoryCommand {
         experiment: String,
         #[arg(long)]
         evidence: String,
+        #[arg(long)]
+        override_known_answer: bool,
     },
     Reject {
         id: String,
@@ -158,7 +160,15 @@ async fn execute() -> Result<()> {
                     id,
                     experiment,
                     evidence,
-                } => store.revise(id, "validated", experiment, evidence, None)?,
+                    override_known_answer,
+                } => store.revise_with_override(
+                    id,
+                    "validated",
+                    experiment,
+                    evidence,
+                    None,
+                    *override_known_answer,
+                )?,
                 MemoryCommand::Reject {
                     id,
                     experiment,
