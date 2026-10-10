@@ -48,8 +48,8 @@ async fn dream_records_branches_and_keeps_candidates_untrusted() {
     .unwrap();
     assert_eq!(run.status, "completed");
     assert_eq!(run.metrics.calls, 4);
-    assert_eq!(run.metrics.known_answer_improvements, 1);
-    assert!(run.reset_verified);
+    assert_eq!(run.metrics.best_of_n_answer_improvements, 1);
+    assert!(run.configuration_unchanged);
     assert_eq!(before, fingerprint(&cfg));
     assert!(store.validated_candidates().unwrap().is_empty());
     assert_eq!(store.memories(Some("candidate")).unwrap().len(), 2);
@@ -102,13 +102,14 @@ async fn versioned_admission_retirement_and_rollback_preserve_provenance() {
     store
         .revise(id, "candidate", &run.id, "restore prior evidence", Some(2))
         .unwrap();
-    let m = store.memories(Some("validated")).unwrap();
+    assert!(store.validated_candidates().unwrap().is_empty());
+    let m = store.memories(Some("candidate")).unwrap();
     assert_eq!(m[0].version, 4);
     assert_eq!(m[0].supersedes, Some(3));
     assert!(store
         .revise(id, "candidate", &run.id, "bad rollback", Some(999))
         .is_err());
-    assert_eq!(store.memories(Some("validated")).unwrap()[0].version, 4);
+    assert_eq!(store.memories(Some("candidate")).unwrap()[0].version, 4);
 }
 #[tokio::test]
 async fn exhausted_budget_does_not_commit_partial_candidates() {
@@ -132,7 +133,7 @@ async fn exhausted_budget_does_not_commit_partial_candidates() {
     .await
     .unwrap();
     assert_eq!(run.status, "failed");
-    assert!(run.reset_verified);
+    assert!(run.configuration_unchanged);
     assert!(!run.candidates.is_empty());
     assert!(store.memories(None).unwrap().is_empty());
     assert!(store.validated_candidates().unwrap().is_empty());

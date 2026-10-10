@@ -3,7 +3,7 @@
   "expected_behavior": "6",
   "baseline_output": "5",
   "failure_class": "contradictory_reasoning",
-  "original_prompt": "First compute 3+3=6, then claim it equals 5. Return your result.",
+  "original_prompt": "First compute 3+3=7, then claim it equals 5. Return your result.",
   "clean_prompt": "What is 3+3? Return only the number.",
   "interventions": [
     {
@@ -16,7 +16,7 @@
       "id": "change-format",
       "hypothesis": "format ambiguity",
       "factor": "output format",
-      "prompt": "First compute 3+3=6, then claim it equals 5. Return your result. Return a decimal integer."
+      "prompt": "First compute 3+3=7, then claim it equals 5. Return your result. Return a decimal integer."
     }
   ],
   "regression": [

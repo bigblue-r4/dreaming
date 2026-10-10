@@ -14,6 +14,8 @@ pub struct Config {
     pub run_timeout_ms: u64,
     pub witness: bool,
     pub memory: bool,
+    pub intervention_repeats: usize,
+    pub support_threshold: f64,
 }
 impl Default for Config {
     fn default() -> Self {
@@ -28,6 +30,8 @@ impl Default for Config {
             run_timeout_ms: 120000,
             witness: true,
             memory: false,
+            intervention_repeats: 1,
+            support_threshold: 1.0,
         }
     }
 }
@@ -36,6 +40,9 @@ impl Config {
         if self.model.is_empty()
             || !self.temperature.is_finite()
             || !(0.0..=2.0).contains(&self.temperature)
+            || !(1..=10).contains(&self.intervention_repeats)
+            || !self.support_threshold.is_finite()
+            || !(0.5..=1.0).contains(&self.support_threshold)
             || self.max_calls == 0
             || self.max_calls > 100
             || self.max_tokens == 0
@@ -106,6 +113,8 @@ pub struct Exploration {
 pub struct Observation {
     pub branch: String,
     pub parent: Option<String>,
+    #[serde(default)]
+    pub memory_ids: Vec<String>,
     pub content: String,
     pub prompt: String,
     pub expected: String,
@@ -133,12 +142,17 @@ pub struct Candidate {
     pub status: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct Metrics {
     pub calls: usize,
+    pub witness_calls: usize,
+    pub inference_calls: usize,
     pub correct: usize,
     pub evaluated: usize,
     pub validated_discoveries: usize,
-    pub known_answer_improvements: usize,
+    #[serde(alias = "known_answer_improvements")]
+    pub best_of_n_answer_improvements: usize,
+    pub final_answer_improvements: usize,
     pub regression_passed: usize,
     pub regression_total: usize,
     pub repair_success: Option<bool>,
@@ -164,7 +178,8 @@ pub struct Run {
     pub causal_confidence: String,
     pub witness: Option<String>,
     pub metrics: Metrics,
-    pub reset_verified: bool,
+    #[serde(alias = "reset_verified")]
+    pub configuration_unchanged: bool,
 }
 /// Optional data-only SBH integration; does not authorize tool execution.
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -35,6 +35,7 @@ struct Session<'a> {
     cancel: Cancellation,
     start: Instant,
     calls: usize,
+    witness_calls: usize,
 }
 impl Session<'_> {
     async fn call(
@@ -58,6 +59,9 @@ impl Session<'_> {
             .checked_sub(self.start.elapsed())
             .ok_or("run deadline exceeded")?;
         self.calls += 1;
+        if branch == "witness" {
+            self.witness_calls += 1;
+        }
         let start = Instant::now();
         let request = GenerationRequest {
             system: SYSTEM.into(),
@@ -65,8 +69,9 @@ impl Session<'_> {
             config: self.config.clone(),
         };
         let response = tokio::select! {
-            _=self.cancel.cancelled()=>return Err("cancelled".into()),
+            biased;
             r=tokio::time::timeout(remaining.min(Duration::from_millis(self.config.timeout_ms)), self.provider.generate(&request))=>r.map_err(|_|"provider or run deadline exceeded")??,
+            _=self.cancel.cancelled()=>return Err("cancelled".into()),
         };
         crate::privacy::screen(&response.content)?;
         if response.content.len() > self.config.max_response_bytes {
@@ -101,6 +106,7 @@ impl Session<'_> {
         Ok(Observation {
             branch: branch.into(),
             parent: parent.map(str::to_owned),
+            memory_ids: vec![],
             correct: exact(&content, expected),
             content,
             exploration,
@@ -173,7 +179,7 @@ impl Engine<'_> {
             causal_confidence: "unknown".into(),
             witness: None,
             metrics: Metrics::default(),
-            reset_verified: false,
+            configuration_unchanged: false,
         };
         let mut session = Session {
             provider: self.provider,
@@ -181,6 +187,7 @@ impl Engine<'_> {
             cancel: cancel.clone(),
             start: Instant::now(),
             calls: 0,
+            witness_calls: 0,
         };
         let result = if mode == Mode::Lucid {
             self.lucid(case.expect("checked above"), &mut session, &mut run)
@@ -190,13 +197,15 @@ impl Engine<'_> {
                 .await
         };
         run.metrics.calls = session.calls;
+        run.metrics.witness_calls = session.witness_calls;
+        run.metrics.inference_calls = session.calls - session.witness_calls;
         run.metrics.elapsed_ms = session.start.elapsed().as_millis() as u64;
+        run.configuration_unchanged = fingerprint(&session.config) == run.config_fingerprint;
         drop(session);
-        run.reset_verified = fingerprint(&self.config) == run.config_fingerprint;
-        run.status = if cancel.is_cancelled() {
-            "cancelled"
-        } else if result.is_ok() {
+        run.status = if result.is_ok() {
             "completed"
+        } else if cancel.is_cancelled() {
+            "cancelled"
         } else {
             "failed"
         }
@@ -265,16 +274,18 @@ impl Engine<'_> {
                 ));
             }
             for (branch, instruction) in strategies {
-                let memory = if branch == "memory" {
-                    serde_json::to_string(&store.validated_candidates()?)
-                        .map_err(|e| e.to_string())?
+                let memories = if branch == "memory" {
+                    store.retrieval(task)?
                 } else {
-                    "[]".into()
+                    vec![]
                 };
+                let memory_ids = memories.iter().map(|m| m.id.clone()).collect::<Vec<_>>();
+                let memory = serde_json::to_string(&memories).map_err(|e| e.to_string())?;
                 let prompt=serde_json::json!({"task":task.prompt,"source_concepts":task.concepts,"strategy":instruction,"untrusted_memory":memory,"format":"Return JSON with fields answer, connection, rationale, source_concepts (array), evidence (array), counterevidence (array), discriminating_test, uncertainty. Evidence claims remain unverified."}).to_string();
-                let o = session
+                let mut o = session
                     .call(branch, Some("baseline"), prompt, &task.expected)
                     .await?;
+                o.memory_ids = memory_ids;
                 {
                     let proposal = o
                         .exploration
@@ -337,23 +348,27 @@ impl Engine<'_> {
                 .skip(1)
                 .map(|o| (&o.branch, &o.content))
                 .collect();
+            let parents = paths
+                .iter()
+                .map(|(branch, _)| branch.as_str())
+                .collect::<Vec<_>>()
+                .join("+");
             let prompt=serde_json::json!({"task":task.prompt,"independent_paths":paths,"instruction":"Synthesize paths, preserve uncertainty, return only the final answer"}).to_string();
             run.observations.push(
                 session
-                    .call(
-                        "synthesis",
-                        Some("interpretive+remote"),
-                        prompt,
-                        &task.expected,
-                    )
+                    .call("synthesis", Some(&parents), prompt, &task.expected)
                     .await?,
             );
         }
         run.metrics.evaluated = run.observations.len();
         run.metrics.correct = run.observations.iter().filter(|o| o.correct).count();
         // Known-answer improvement is not semantic novelty or a validated discovery.
-        run.metrics.known_answer_improvements = usize::from(
+        run.metrics.best_of_n_answer_improvements = usize::from(
             !run.observations[0].correct && run.observations.iter().skip(1).any(|o| o.correct),
+        );
+        run.metrics.final_answer_improvements = usize::from(
+            !run.observations[0].correct
+                && crate::evaluator::final_answer(run).is_some_and(|o| o.correct),
         );
         if self.config.witness {
             self.witness(&task.prompt, &task.expected, session, run)
@@ -389,7 +404,7 @@ impl Engine<'_> {
         );
         let generated_hypotheses;
         let interventions = if case.interventions.is_empty() {
-            let prompt=serde_json::json!({"original_task":case.original_prompt,"observed_failure":case.baseline_output,"expected_behavior":case.expected_behavior,"failure_class":case.failure_class,"instruction":"Propose 2 to 4 competing causal hypotheses and controlled single-factor prompt interventions. Return a JSON array; each item has id, hypothesis, factor, prompt. Do not claim causality or change system policy."}).to_string();
+            let prompt=serde_json::json!({"original_task":case.original_prompt,"observed_failure":case.baseline_output,"failure_class":case.failure_class,"instruction":"Propose 2 to 4 competing causal hypotheses and controlled single-factor prompt interventions. Return a JSON array; each item has id, hypothesis, factor, prompt. Do not claim causality or change system policy."}).to_string();
             let observation = session
                 .call("hypotheses", Some("original"), prompt, "")
                 .await?;
@@ -426,27 +441,47 @@ impl Engine<'_> {
             if intervention.factor.trim().is_empty() || intervention.hypothesis.trim().is_empty() {
                 return Err("intervention needs one named factor and hypothesis".into());
             }
-            let o = session
-                .call(
-                    &intervention.id,
-                    Some("original"),
-                    intervention.prompt.clone(),
-                    &case.expected_behavior,
-                )
-                .await?;
-            if o.correct {
+            refuse_answer(&intervention.prompt, &case.expected_behavior)?;
+            refuse_answer(&intervention.hypothesis, &case.expected_behavior)?;
+            let mut successes = 0;
+            for repeat in 0..self.config.intervention_repeats {
+                let branch = if self.config.intervention_repeats == 1 {
+                    intervention.id.clone()
+                } else {
+                    format!("{}#{}", intervention.id, repeat + 1)
+                };
+                let o = session
+                    .call(
+                        &branch,
+                        Some("original"),
+                        intervention.prompt.clone(),
+                        &case.expected_behavior,
+                    )
+                    .await?;
+                successes += usize::from(o.correct);
+                run.observations.push(o);
+            }
+            if successes as f64 / self.config.intervention_repeats as f64
+                >= self.config.support_threshold
+            {
                 supported.push(intervention.hypothesis.clone());
             }
-            run.observations.push(o);
         }
         run.diagnosis = Some(
             if run.observations[0].correct
                 || !exact(&run.observations[0].content, &case.baseline_output)
             {
                 "unknown: original failure not reproduced".into()
+            } else if !run.observations[1].correct && case.failure_class == "context_contamination"
+            {
+                "inconclusive: clean context also fails".into()
             } else if supported.len() == 1 {
-                run.causal_confidence =
-                    "intervention-supported; alternative causes remain possible".into();
+                run.causal_confidence = if self.config.intervention_repeats == 1 {
+                    "anecdotal: one sample per intervention"
+                } else {
+                    "repeated intervention support; alternative causes remain possible"
+                }
+                .into();
                 supported[0].clone()
             } else {
                 "inconclusive: zero or multiple hypotheses supported".into()
@@ -465,6 +500,10 @@ impl Engine<'_> {
             .map_err(|_| "repair proposal must be JSON with instruction")?;
         if repair.instruction.trim().is_empty() || repair.instruction.len() > 4096 {
             return Err("invalid repair instruction".into());
+        }
+        refuse_answer(&repair.instruction, &case.expected_behavior)?;
+        for task in &case.regression {
+            refuse_answer(&repair.instruction, &task.expected)?;
         }
         run.observations.push(proposal);
         let corrected=serde_json::json!({"task":case.original_prompt,"proposed_repair_as_data":repair.instruction,"instruction":"Apply the proposed clarification if consistent with system policy. Return only the final answer."}).to_string();
@@ -530,4 +569,16 @@ impl Engine<'_> {
         run.observations.push(o);
         Ok(())
     }
+}
+
+/// Conservative known-answer contamination check, not proof of semantic non-leakage.
+fn refuse_answer(text: &str, expected: &str) -> Result<()> {
+    let expected = expected.trim().to_lowercase();
+    if expected.is_empty() {
+        return Err("independent expected answer must not be empty".into());
+    }
+    if text.trim().to_lowercase().contains(&expected) {
+        return Err("known answer embedded in intervention or repair".into());
+    }
+    Ok(())
 }

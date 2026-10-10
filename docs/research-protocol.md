@@ -1,3 +1,5 @@
 # Research protocol
 
 Compare baseline, sampling diversity, Dream, Lucid, and witness/no-witness and memory/no-memory arms with recorded configurations and call/token/time budgets. Dream measures exact checkable correctness and baseline absence; semantic novelty stays unknown without independent evidence. Lucid compares original, clean and one-factor intervention outputs; multiple successful interventions yield inconclusive attribution. Check corrections on independently supplied regression cases. Keep held-out cases separate from tuning. Record counts, not just rates. Repeated trials and aggregate uncertainty are required before research claims; a seed does not guarantee cross-provider reproducibility.
+
+Single-sample intervention support is anecdotal. Set `intervention_repeats` and `support_threshold` for repeated support within call budgets; clean-context failure blocks context-contamination attribution. Compare final-answer correctness and report branch counts and best-of-N improvement separately. Witness calls are separate from inference calls when comparing budgets. See [memory policy](memory-policy.md) for held-out evidence and contamination limits.
